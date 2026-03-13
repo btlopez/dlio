@@ -63,10 +63,10 @@ dlio:
       initLambdaFactor: 1e-9
 
     geo:
-      Kp: 4.5
-      Kv: 11.25
+      Kp: 8
+      Kv: 12
       Kq: 4.0
-      Kab: 2.25
+      Kab: 6
       Kgb: 1.0
       abias_max: 5.0
       gbias_max: 0.5

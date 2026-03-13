@@ -399,7 +399,7 @@ void dlio::OdomNode::publishToROS(pcl::PointCloud<PointType>::ConstPtr published
   transformStamped.transform.rotation.y = this->state.q.y();
   transformStamped.transform.rotation.z = this->state.q.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
   // transform: baselink to imu
   transformStamped.header.stamp = this->imu_stamp;
@@ -416,7 +416,7 @@ void dlio::OdomNode::publishToROS(pcl::PointCloud<PointType>::ConstPtr published
   transformStamped.transform.rotation.y = q.y();
   transformStamped.transform.rotation.z = q.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
   // transform: baselink to lidar
   transformStamped.header.stamp = this->imu_stamp;
@@ -433,7 +433,7 @@ void dlio::OdomNode::publishToROS(pcl::PointCloud<PointType>::ConstPtr published
   transformStamped.transform.rotation.y = qq.y();
   transformStamped.transform.rotation.z = qq.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
 }
 
@@ -1400,7 +1400,13 @@ sensor_msgs::Imu::Ptr dlio::OdomNode::transformImu(const sensor_msgs::Imu::Const
                             imu_raw->linear_acceleration.y,
                             imu_raw->linear_acceleration.z);
 
-  Eigen::Vector3f lin_accel_cg = this->extrinsics.baselink2imu.R * lin_accel;
+  double scale = 1.0;
+
+  if (this->sensor == SensorType::LIVOX) {
+    scale = this->gravity_;
+  }
+
+  Eigen::Vector3f lin_accel_cg = scale * this->extrinsics.baselink2imu.R * lin_accel;
 
   lin_accel_cg = lin_accel_cg
                  + ((ang_vel_cg - ang_vel_cg_prev) / dt).cross(-this->extrinsics.baselink2imu.t)

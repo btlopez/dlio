@@ -42,12 +42,16 @@ dlio:
         y: 0.0
         z: 1.0
 
+    priorMap:
+      use: true
+      path: /home/vectr/lab.pcd
+
     imu:
       approximateGravity: true
       calibration:
         gyro: true
         accel: true
-        time: 3
+        time: 1
       bufferSize: 5000
 
     preprocessing:

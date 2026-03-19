@@ -283,7 +283,7 @@ void dlio::OdomNode::getParams() {
   }
 
   // Initial Position
-  ros::param::param<bool>("~dlio/odom/initialPose/use", this->initial_pose_use_, false);
+  ros::param::param<bool>("~dlio/odom/initialPose/use", this->use_initial_pose_, false);
 
   double px, py, pz, qx, qy, qz, qw;
   ros::param::param<double>("~dlio/odom/initialPose/position/x", px, 0.0);
@@ -296,6 +296,10 @@ void dlio::OdomNode::getParams() {
   this->initial_position_ = Eigen::Vector3f(px, py, pz);
   this->initial_orientation_ = Eigen::Quaternionf(qw, qx, qy, qz);
   this->initial_orientation_.normalize();
+
+  // Align to Prior Map
+  ros::param::param<bool>("~dlio/odom/priorMap/use", this->use_prior_map_, false);
+  ros::param::param<std::string>("~dlio/odom/priorMap/path", this->prior_map_path_, "~/");
 
   // GICP
   ros::param::param<int>("~dlio/odom/gicp/minNumPoints", this->gicp_min_num_points_, 100);
@@ -770,8 +774,8 @@ void dlio::OdomNode::initializeDLIO() {
   }
 
   // Use initial known pose
-  if (this->initial_pose_use_) {
-    std::cout << "Setting known initial pose... "; std::cout.flush();
+  if (this->use_initial_pose_) {
+    std::cout << " Setting known initial pose... "; std::cout.flush();
 
     // this->state.stamp = this->imu_meas.stamp;
     // set known position
@@ -786,6 +790,23 @@ void dlio::OdomNode::initializeDLIO() {
       this->lidarPose.q = this->state.q;
     }
     std::cout << "Done setting known initial pose" << std::endl << std::endl;
+  }
+
+  if (this->use_prior_map_) {
+    std::cout << " Aligning to prior map..." << std::endl;
+    // 1. Create a shared pointer to a pcl::PointCloud<PointType> object
+    pcl::PointCloud<PointType>::Ptr cloud (new pcl::PointCloud<PointType>);
+
+    // 2. Load the PCD file
+    // The function takes the file path and the cloud object reference
+    if (pcl::io::loadPCDFile<PointType> (this->prior_map_path_, *cloud) == -1) 
+    {
+      PCL_ERROR ("Couldn't read file \n");
+      return;
+    }
+
+    // 3. Optional: Print the number of points loaded
+    std::cout << " Loaded " << cloud->width * cloud->height << " data points from " << this->prior_map_path_ << std::endl;
   }
 
   this->dlio_initialized = true;
@@ -1000,7 +1021,7 @@ void dlio::OdomNode::callbackImu(const sensor_msgs::Imu::ConstPtr& imu_raw) {
 
         std::cout << " Gyro biases  [xyz]: " << to_string_with_precision(this->state.b.gyro[0], 8) << ", "
                                              << to_string_with_precision(this->state.b.gyro[1], 8) << ", "
-                                             << to_string_with_precision(this->state.b.gyro[2], 8) << std::endl;
+                                             << to_string_with_precision(this->state.b.gyro[2], 8) << std::endl << std::endl;
       }
 
       this->imu_calibrated = true;

@@ -777,7 +777,6 @@ void dlio::OdomNode::initializeDLIO() {
   if (this->use_initial_pose_) {
     std::cout << " Setting known initial pose... "; std::cout.flush();
 
-    // this->state.stamp = this->imu_meas.stamp;
     // set known position
     this->state.p = this->initial_position_;
     this->T.block(0,3,3,1) = this->state.p;
@@ -794,19 +793,66 @@ void dlio::OdomNode::initializeDLIO() {
 
   if (this->use_prior_map_) {
     std::cout << " Aligning to prior map..." << std::endl;
-    // 1. Create a shared pointer to a pcl::PointCloud<PointType> object
-    pcl::PointCloud<PointType>::Ptr cloud (new pcl::PointCloud<PointType>);
+    // Create a shared pointer to a pcl::PointCloud<PointType> object
+    pcl::PointCloud<PointType>::Ptr prior_map(new pcl::PointCloud<PointType>);
 
-    // 2. Load the PCD file
-    // The function takes the file path and the cloud object reference
-    if (pcl::io::loadPCDFile<PointType> (this->prior_map_path_, *cloud) == -1) 
-    {
+    // Load the PCD file
+    if (pcl::io::loadPCDFile<PointType>(this->prior_map_path_, *prior_map) ==
+        -1) {
       PCL_ERROR ("Couldn't read file \n");
       return;
     }
 
-    // 3. Optional: Print the number of points loaded
-    std::cout << " Loaded " << cloud->width * cloud->height << " data points from " << this->prior_map_path_ << std::endl;
+    // Print the number of points loaded
+    std::cout << " Loaded " << prior_map->width * prior_map->height
+              << " data points from " << this->prior_map_path_ << std::endl;
+
+    // Transform scan based on prior then set as input
+    pcl::PointCloud<PointType>::Ptr transformed_scan(
+        boost::make_shared<pcl::PointCloud<PointType>>());
+
+    pcl::transformPointCloud(*this->original_scan, *transformed_scan,
+                             this->T * this->extrinsics.lidar2baselink_T);
+
+    // Set current scan as source
+    this->gicp.setInputSource(transformed_scan);
+    this->gicp.calculateSourceCovariances();
+
+    // Set prior map as target
+    this->gicp.setInputTarget(prior_map);
+    this->gicp.calculateTargetCovariances();
+
+    // Align and get new transform
+    pcl::PointCloud<PointType>::Ptr aligned(
+        boost::make_shared<pcl::PointCloud<PointType>>());
+    this->gicp.align(*aligned);
+
+    // Get relative transformation in global frame
+    auto T_corr = this->gicp.getFinalTransformation();
+
+    // Check if the algorithm converged
+    if (this->gicp.hasConverged()) {
+      // GICP converged to apply the correction
+      this->T = T_corr * this->T;
+
+      std::cout << "\n GICP converged after "
+                << this->gicp.getFinalTransformation().size() << " iterations."
+                << std::endl;
+      std::cout << " The final transformation matrix is:\n"
+                << this->T << std::endl;
+
+      // Set internal state to new transform
+      Eigen::Matrix3f R = this->T.block(0, 0, 3, 3);
+      this->state.p = this->T.block(0, 3, 3, 1);
+      this->state.q = R;
+      this->state.q.normalize();
+    } else {
+      std::cout << "\n GICP did not converge." << std::endl;
+    }
+
+    // Clear source and target
+    this->gicp.clearSource();
+    this->gicp.clearTarget();
   }
 
   this->dlio_initialized = true;
@@ -826,13 +872,13 @@ void dlio::OdomNode::callbackPointCloud(const sensor_msgs::PointCloud2ConstPtr& 
     this->first_scan_stamp = pc->header.stamp.toSec();
   }
 
+  // Convert incoming scan into DLIO format
+  this->getScanFromROS(pc);
+
   // DLIO Initialization procedures (IMU calib, gravity align)
   if (!this->dlio_initialized) {
     this->initializeDLIO();
   }
-
-  // Convert incoming scan into DLIO format
-  this->getScanFromROS(pc);
 
   // Preprocess points
   this->preprocessPoints();

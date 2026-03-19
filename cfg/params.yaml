@@ -31,11 +31,11 @@ dlio:
     computeTimeOffset: true
 
     initialPose:
-      use: true
+      use: false
       position:
-        x: 3.962
-        y: -3.466
-        z: 0.850
+        x: 0.0
+        y: 0.0
+        z: 0.0
       orientation:
         w: 0.0
         x: 0.0
@@ -43,7 +43,7 @@ dlio:
         z: 1.0
 
     priorMap:
-      use: true
+      use: false
       path: /home/vectr/lab.pcd
 
     imu:

@@ -30,12 +30,28 @@ dlio:
     gravity: 9.80665
     computeTimeOffset: true
 
+    initialPose:
+      use: false
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      orientation:
+        w: 1.0
+        x: 0.0
+        y: 0.0
+        z: 0.0
+
+    priorMap:
+      use: false
+      path: /home/vectr/lab.pcd
+
     imu:
-      approximateGravity: true
+      gravityAlign: false
       calibration:
         gyro: true
         accel: true
-        time: 3
+        time: 1
       bufferSize: 5000
 
     preprocessing:
@@ -63,10 +79,10 @@ dlio:
       initLambdaFactor: 1e-9
 
     geo:
-      Kp: 4.5
-      Kv: 11.25
+      Kp: 8
+      Kv: 12
       Kq: 4.0
-      Kab: 2.25
+      Kab: 6
       Kgb: 1.0
       abias_max: 5.0
       gbias_max: 0.5

@@ -199,10 +199,10 @@ private:
       Eigen::Vector3f t;
       Eigen::Matrix3f R;
     };
-    SE3 baselink2imu;
-    SE3 baselink2lidar;
-    Eigen::Matrix4f baselink2imu_T;
-    Eigen::Matrix4f baselink2lidar_T;
+    SE3 imu2baselink;
+    SE3 lidar2baselink;
+    Eigen::Matrix4f imu2baselink_T;
+    Eigen::Matrix4f lidar2baselink_T;
   }; Extrinsics extrinsics;
 
   // IMU
@@ -221,6 +221,13 @@ private:
   boost::circular_buffer<ImuMeas> imu_buffer;
   std::mutex mtx_imu;
   std::condition_variable cv_imu_stamp;
+
+  bool use_initial_pose_;
+  Eigen::Vector3f initial_position_;
+  Eigen::Quaternionf initial_orientation_;
+
+  bool use_prior_map_;
+  std::string prior_map_path_;
 
   static bool comparatorImu(ImuMeas m1, ImuMeas m2) {
     return (m1.stamp < m2.stamp);

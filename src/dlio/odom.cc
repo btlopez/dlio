@@ -222,31 +222,31 @@ void dlio::OdomNode::getParams() {
   std::vector<float> R_default{1., 0., 0., 0., 1., 0., 0., 0., 1.};
 
   // center of gravity to imu
-  std::vector<float> baselink2imu_t, baselink2imu_R;
-  ros::param::param<std::vector<float>>("~dlio/extrinsics/baselink2imu/t", baselink2imu_t, t_default);
-  ros::param::param<std::vector<float>>("~dlio/extrinsics/baselink2imu/R", baselink2imu_R, R_default);
-  this->extrinsics.baselink2imu.t =
-    Eigen::Vector3f(baselink2imu_t[0], baselink2imu_t[1], baselink2imu_t[2]);
-  this->extrinsics.baselink2imu.R =
-    Eigen::Map<const Eigen::Matrix<float, -1, -1, Eigen::RowMajor>>(baselink2imu_R.data(), 3, 3);
+  std::vector<float> imu2baselink_t, imu2baselink_R;
+  ros::param::param<std::vector<float>>("~dlio/extrinsics/imu2baselink/t", imu2baselink_t, t_default);
+  ros::param::param<std::vector<float>>("~dlio/extrinsics/imu2baselink/R", imu2baselink_R, R_default);
+  this->extrinsics.imu2baselink.t =
+    Eigen::Vector3f(imu2baselink_t[0], imu2baselink_t[1], imu2baselink_t[2]);
+  this->extrinsics.imu2baselink.R =
+    Eigen::Map<const Eigen::Matrix<float, -1, -1, Eigen::RowMajor>>(imu2baselink_R.data(), 3, 3);
 
-  this->extrinsics.baselink2imu_T = Eigen::Matrix4f::Identity();
-  this->extrinsics.baselink2imu_T.block(0, 3, 3, 1) = this->extrinsics.baselink2imu.t;
-  this->extrinsics.baselink2imu_T.block(0, 0, 3, 3) = this->extrinsics.baselink2imu.R;
+  this->extrinsics.imu2baselink_T = Eigen::Matrix4f::Identity();
+  this->extrinsics.imu2baselink_T.block(0, 3, 3, 1) = this->extrinsics.imu2baselink.t;
+  this->extrinsics.imu2baselink_T.block(0, 0, 3, 3) = this->extrinsics.imu2baselink.R;
 
   // center of gravity to lidar
-  std::vector<float> baselink2lidar_t, baselink2lidar_R;
-  ros::param::param<std::vector<float>>("~dlio/extrinsics/baselink2lidar/t", baselink2lidar_t, t_default);
-  ros::param::param<std::vector<float>>("~dlio/extrinsics/baselink2lidar/R", baselink2lidar_R, R_default);
+  std::vector<float> lidar2baselink_t, lidar2baselink_R;
+  ros::param::param<std::vector<float>>("~dlio/extrinsics/lidar2baselink/t", lidar2baselink_t, t_default);
+  ros::param::param<std::vector<float>>("~dlio/extrinsics/lidar2baselink/R", lidar2baselink_R, R_default);
 
-  this->extrinsics.baselink2lidar.t =
-    Eigen::Vector3f(baselink2lidar_t[0], baselink2lidar_t[1], baselink2lidar_t[2]);
-  this->extrinsics.baselink2lidar.R =
-    Eigen::Map<const Eigen::Matrix<float, -1, -1, Eigen::RowMajor>>(baselink2lidar_R.data(), 3, 3);
+  this->extrinsics.lidar2baselink.t =
+    Eigen::Vector3f(lidar2baselink_t[0], lidar2baselink_t[1], lidar2baselink_t[2]);
+  this->extrinsics.lidar2baselink.R =
+    Eigen::Map<const Eigen::Matrix<float, -1, -1, Eigen::RowMajor>>(lidar2baselink_R.data(), 3, 3);
 
-  this->extrinsics.baselink2lidar_T = Eigen::Matrix4f::Identity();
-  this->extrinsics.baselink2lidar_T.block(0, 3, 3, 1) = this->extrinsics.baselink2lidar.t;
-  this->extrinsics.baselink2lidar_T.block(0, 0, 3, 3) = this->extrinsics.baselink2lidar.R;
+  this->extrinsics.lidar2baselink_T = Eigen::Matrix4f::Identity();
+  this->extrinsics.lidar2baselink_T.block(0, 3, 3, 1) = this->extrinsics.lidar2baselink.t;
+  this->extrinsics.lidar2baselink_T.block(0, 0, 3, 3) = this->extrinsics.lidar2baselink.R;
 
   // IMU
   ros::param::param<bool>("~dlio/odom/imu/calibration/accel", this->calibrate_accel_, true);
@@ -257,7 +257,7 @@ void dlio::OdomNode::getParams() {
   std::vector<float> accel_default{0., 0., 0.}; std::vector<float> prior_accel_bias;
   std::vector<float> gyro_default{0., 0., 0.}; std::vector<float> prior_gyro_bias;
 
-  ros::param::param<bool>("~dlio/odom/imu/approximateGravity", this->gravity_align_, true);
+  ros::param::param<bool>("~dlio/odom/imu/gravityAlign", this->gravity_align_, true);
   ros::param::param<bool>("~dlio/imu/calibration", this->imu_calibrate_, true);
   ros::param::param<std::vector<float>>("~dlio/imu/intrinsics/accel/bias", prior_accel_bias, accel_default);
   ros::param::param<std::vector<float>>("~dlio/imu/intrinsics/gyro/bias", prior_gyro_bias, gyro_default);
@@ -281,6 +281,25 @@ void dlio::OdomNode::getParams() {
     this->state.b.gyro = Eigen::Vector3f(0., 0., 0.);
     this->imu_accel_sm_ = Eigen::Matrix3f::Identity();
   }
+
+  // Initial Position
+  ros::param::param<bool>("~dlio/odom/initialPose/use", this->use_initial_pose_, false);
+
+  double px, py, pz, qx, qy, qz, qw;
+  ros::param::param<double>("~dlio/odom/initialPose/position/x", px, 0.0);
+  ros::param::param<double>("~dlio/odom/initialPose/position/y", py, 0.0);
+  ros::param::param<double>("~dlio/odom/initialPose/position/z", pz, 0.0);
+  ros::param::param<double>("~dlio/odom/initialPose/orientation/w", qw, 1.0);
+  ros::param::param<double>("~dlio/odom/initialPose/orientation/x", qx, 0.0);
+  ros::param::param<double>("~dlio/odom/initialPose/orientation/y", qy, 0.0);
+  ros::param::param<double>("~dlio/odom/initialPose/orientation/z", qz, 0.0);
+  this->initial_position_ = Eigen::Vector3f(px, py, pz);
+  this->initial_orientation_ = Eigen::Quaternionf(qw, qx, qy, qz);
+  this->initial_orientation_.normalize();
+
+  // Align to Prior Map
+  ros::param::param<bool>("~dlio/odom/priorMap/use", this->use_prior_map_, false);
+  ros::param::param<std::string>("~dlio/odom/priorMap/path", this->prior_map_path_, "~/");
 
   // GICP
   ros::param::param<int>("~dlio/odom/gicp/minNumPoints", this->gicp_min_num_points_, 100);
@@ -399,41 +418,41 @@ void dlio::OdomNode::publishToROS(pcl::PointCloud<PointType>::ConstPtr published
   transformStamped.transform.rotation.y = this->state.q.y();
   transformStamped.transform.rotation.z = this->state.q.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
   // transform: baselink to imu
   transformStamped.header.stamp = this->imu_stamp;
   transformStamped.header.frame_id = this->baselink_frame;
   transformStamped.child_frame_id = this->imu_frame;
 
-  transformStamped.transform.translation.x = this->extrinsics.baselink2imu.t[0];
-  transformStamped.transform.translation.y = this->extrinsics.baselink2imu.t[1];
-  transformStamped.transform.translation.z = this->extrinsics.baselink2imu.t[2];
+  transformStamped.transform.translation.x = this->extrinsics.imu2baselink.t[0];
+  transformStamped.transform.translation.y = this->extrinsics.imu2baselink.t[1];
+  transformStamped.transform.translation.z = this->extrinsics.imu2baselink.t[2];
 
-  Eigen::Quaternionf q(this->extrinsics.baselink2imu.R);
+  Eigen::Quaternionf q(this->extrinsics.imu2baselink.R);
   transformStamped.transform.rotation.w = q.w();
   transformStamped.transform.rotation.x = q.x();
   transformStamped.transform.rotation.y = q.y();
   transformStamped.transform.rotation.z = q.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
   // transform: baselink to lidar
   transformStamped.header.stamp = this->imu_stamp;
   transformStamped.header.frame_id = this->baselink_frame;
   transformStamped.child_frame_id = this->lidar_frame;
 
-  transformStamped.transform.translation.x = this->extrinsics.baselink2lidar.t[0];
-  transformStamped.transform.translation.y = this->extrinsics.baselink2lidar.t[1];
-  transformStamped.transform.translation.z = this->extrinsics.baselink2lidar.t[2];
+  transformStamped.transform.translation.x = this->extrinsics.lidar2baselink.t[0];
+  transformStamped.transform.translation.y = this->extrinsics.lidar2baselink.t[1];
+  transformStamped.transform.translation.z = this->extrinsics.lidar2baselink.t[2];
 
-  Eigen::Quaternionf qq(this->extrinsics.baselink2lidar.R);
+  Eigen::Quaternionf qq(this->extrinsics.lidar2baselink.R);
   transformStamped.transform.rotation.w = qq.w();
   transformStamped.transform.rotation.x = qq.x();
   transformStamped.transform.rotation.y = qq.y();
   transformStamped.transform.rotation.z = qq.z();
 
-  br.sendTransform(transformStamped);
+  // br.sendTransform(transformStamped);
 
 }
 
@@ -576,7 +595,7 @@ void dlio::OdomNode::preprocessPoints() {
 
     pcl::PointCloud<PointType>::Ptr deskewed_scan_ (boost::make_shared<pcl::PointCloud<PointType>>());
     pcl::transformPointCloud (*this->original_scan, *deskewed_scan_,
-                              this->T_prior * this->extrinsics.baselink2lidar_T);
+                              this->T_prior * this->extrinsics.lidar2baselink_T);
     this->deskewed_scan = deskewed_scan_;
     this->deskew_status = false;
   }
@@ -685,7 +704,7 @@ void dlio::OdomNode::deskewPointcloud() {
 
     this->first_valid_scan = true;
     this->T_prior = this->T; // assume no motion for the first scan
-    pcl::transformPointCloud (*deskewed_scan_, *deskewed_scan_, this->T_prior * this->extrinsics.baselink2lidar_T);
+    pcl::transformPointCloud (*deskewed_scan_, *deskewed_scan_, this->T_prior * this->extrinsics.lidar2baselink_T);
     this->deskewed_scan = deskewed_scan_;
     this->deskew_status = true;
     return;
@@ -703,7 +722,7 @@ void dlio::OdomNode::deskewPointcloud() {
     ROS_FATAL("Bad time sync between LiDAR and IMU!");
 
     this->T_prior = this->T;
-    pcl::transformPointCloud (*deskewed_scan_, *deskewed_scan_, this->T_prior * this->extrinsics.baselink2lidar_T);
+    pcl::transformPointCloud (*deskewed_scan_, *deskewed_scan_, this->T_prior * this->extrinsics.lidar2baselink_T);
     this->deskewed_scan = deskewed_scan_;
     this->deskew_status = false;
     return;
@@ -715,7 +734,7 @@ void dlio::OdomNode::deskewPointcloud() {
 #pragma omp parallel for num_threads(this->num_threads_)
   for (int i = 0; i < timestamps.size(); i++) {
 
-    Eigen::Matrix4f T = frames[i] * this->extrinsics.baselink2lidar_T;
+    Eigen::Matrix4f T = frames[i] * this->extrinsics.lidar2baselink_T;
 
     // transform point to world frame
     for (int k = unique_time_indices[i]; k < unique_time_indices[i+1]; k++) {
@@ -754,6 +773,88 @@ void dlio::OdomNode::initializeDLIO() {
     return;
   }
 
+  // Use initial known pose
+  if (this->use_initial_pose_) {
+    std::cout << " Setting known initial pose... "; std::cout.flush();
+
+    // set known position
+    this->state.p = this->initial_position_;
+    this->T.block(0,3,3,1) = this->state.p;
+    this->lidarPose.p = this->state.p;
+
+    if (!this->gravity_align_) {
+      // set known orientation
+      this->state.q = this->initial_orientation_;
+      this->T.block(0,0,3,3) = this->state.q.toRotationMatrix();
+      this->lidarPose.q = this->state.q;
+    }
+    std::cout << "Done setting known initial pose" << std::endl << std::endl;
+  }
+
+  if (this->use_prior_map_) {
+    std::cout << " Aligning to prior map..." << std::endl;
+    // Create a shared pointer to a pcl::PointCloud<PointType> object
+    pcl::PointCloud<PointType>::Ptr prior_map(new pcl::PointCloud<PointType>);
+
+    // Load the PCD file
+    if (pcl::io::loadPCDFile<PointType>(this->prior_map_path_, *prior_map) ==
+        -1) {
+      PCL_ERROR ("Couldn't read file \n");
+      return;
+    }
+
+    // Print the number of points loaded
+    std::cout << " Loaded " << prior_map->width * prior_map->height
+              << " data points from " << this->prior_map_path_ << std::endl;
+
+    // Transform scan based on prior then set as input
+    pcl::PointCloud<PointType>::Ptr transformed_scan(
+        boost::make_shared<pcl::PointCloud<PointType>>());
+
+    pcl::transformPointCloud(*this->original_scan, *transformed_scan,
+                             this->T * this->extrinsics.lidar2baselink_T);
+
+    // Set current scan as source
+    this->gicp.setInputSource(transformed_scan);
+    this->gicp.calculateSourceCovariances();
+
+    // Set prior map as target
+    this->gicp.setInputTarget(prior_map);
+    this->gicp.calculateTargetCovariances();
+
+    // Align and get new transform
+    pcl::PointCloud<PointType>::Ptr aligned(
+        boost::make_shared<pcl::PointCloud<PointType>>());
+    this->gicp.align(*aligned);
+
+    // Get relative transformation in global frame
+    auto T_corr = this->gicp.getFinalTransformation();
+
+    // Check if the algorithm converged
+    if (this->gicp.hasConverged()) {
+      // GICP converged to apply the correction
+      this->T = T_corr * this->T;
+
+      std::cout << "\n GICP converged after "
+                << this->gicp.getFinalTransformation().size() << " iterations."
+                << std::endl;
+      std::cout << " The final transformation matrix is:\n"
+                << this->T << std::endl;
+
+      // Set internal state to new transform
+      Eigen::Matrix3f R = this->T.block(0, 0, 3, 3);
+      this->state.p = this->T.block(0, 3, 3, 1);
+      this->state.q = R;
+      this->state.q.normalize();
+    } else {
+      std::cout << "\n GICP did not converge." << std::endl;
+    }
+
+    // Clear source and target
+    this->gicp.clearSource();
+    this->gicp.clearTarget();
+  }
+
   this->dlio_initialized = true;
   std::cout << std::endl << " DLIO initialized!" << std::endl;
 
@@ -771,13 +872,13 @@ void dlio::OdomNode::callbackPointCloud(const sensor_msgs::PointCloud2ConstPtr& 
     this->first_scan_stamp = pc->header.stamp.toSec();
   }
 
+  // Convert incoming scan into DLIO format
+  this->getScanFromROS(pc);
+
   // DLIO Initialization procedures (IMU calib, gravity align)
   if (!this->dlio_initialized) {
     this->initializeDLIO();
   }
-
-  // Convert incoming scan into DLIO format
-  this->getScanFromROS(pc);
 
   // Preprocess points
   this->preprocessPoints();
@@ -966,7 +1067,7 @@ void dlio::OdomNode::callbackImu(const sensor_msgs::Imu::ConstPtr& imu_raw) {
 
         std::cout << " Gyro biases  [xyz]: " << to_string_with_precision(this->state.b.gyro[0], 8) << ", "
                                              << to_string_with_precision(this->state.b.gyro[1], 8) << ", "
-                                             << to_string_with_precision(this->state.b.gyro[2], 8) << std::endl;
+                                             << to_string_with_precision(this->state.b.gyro[2], 8) << std::endl << std::endl;
       }
 
       this->imu_calibrated = true;
@@ -1387,7 +1488,7 @@ sensor_msgs::Imu::Ptr dlio::OdomNode::transformImu(const sensor_msgs::Imu::Const
                           imu_raw->angular_velocity.y,
                           imu_raw->angular_velocity.z);
 
-  Eigen::Vector3f ang_vel_cg = this->extrinsics.baselink2imu.R * ang_vel;
+  Eigen::Vector3f ang_vel_cg = this->extrinsics.imu2baselink.R * ang_vel;
 
   imu->angular_velocity.x = ang_vel_cg[0];
   imu->angular_velocity.y = ang_vel_cg[1];
@@ -1400,11 +1501,17 @@ sensor_msgs::Imu::Ptr dlio::OdomNode::transformImu(const sensor_msgs::Imu::Const
                             imu_raw->linear_acceleration.y,
                             imu_raw->linear_acceleration.z);
 
-  Eigen::Vector3f lin_accel_cg = this->extrinsics.baselink2imu.R * lin_accel;
+  double scale = 1.0;
+
+  if (this->sensor == SensorType::LIVOX) {
+    scale = this->gravity_;
+  }
+
+  Eigen::Vector3f lin_accel_cg = scale * this->extrinsics.imu2baselink.R * lin_accel;
 
   lin_accel_cg = lin_accel_cg
-                 + ((ang_vel_cg - ang_vel_cg_prev) / dt).cross(-this->extrinsics.baselink2imu.t)
-                 + ang_vel_cg.cross(ang_vel_cg.cross(-this->extrinsics.baselink2imu.t));
+                 + ((ang_vel_cg - ang_vel_cg_prev) / dt).cross(-this->extrinsics.imu2baselink.t)
+                 + ang_vel_cg.cross(ang_vel_cg.cross(-this->extrinsics.imu2baselink.t));
 
   ang_vel_cg_prev = ang_vel_cg;
 

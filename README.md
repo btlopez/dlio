@@ -52,7 +52,7 @@ catkin build
 After compiling, source the workspace and execute via:
 
 ```sh
-roslaunch direct_lidar_inertial_odometry dlio.launch \
+roslaunch dlio dlio.launch \
   rviz:={true, false} \
   pointcloud_topic:=/robot/lidar \
   imu_topic:=/robot/imu
@@ -61,7 +61,7 @@ roslaunch direct_lidar_inertial_odometry dlio.launch \
 for Ouster, Velodyne, Hesai, or Livox (`xfer_format: 0`) sensors, or 
 
 ```sh
-roslaunch direct_lidar_inertial_odometry dlio.launch \
+roslaunch dlio dlio.launch \
   rviz:={true, false} \
   livox_topic:=/livox/lidar \
   imu_topic:=/robot/imu

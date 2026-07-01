@@ -74,8 +74,8 @@ void dlio::MapNode::callbackKeyframe(const sensor_msgs::PointCloud2ConstPtr& key
 
 }
 
-bool dlio::MapNode::savePcd(direct_lidar_inertial_odometry::save_pcd::Request& req,
-                            direct_lidar_inertial_odometry::save_pcd::Response& res) {
+bool dlio::MapNode::savePcd(dlio::save_pcd::Request& req,
+                            dlio::save_pcd::Response& res) {
 
   pcl::PointCloud<PointType>::Ptr m =
     pcl::PointCloud<PointType>::Ptr (boost::make_shared<pcl::PointCloud<PointType>>(*this->dlio_map));

@@ -11,7 +11,7 @@
 ###########################################################
 
 cmake_minimum_required(VERSION 3.12.4)
-project(direct_lidar_inertial_odometry)
+project(dlio)
 
 add_compile_options(-std=c++17)
 set(CMAKE_BUILD_TYPE "Release")

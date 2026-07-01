@@ -27,8 +27,8 @@ private:
 
   void callbackKeyframe(const sensor_msgs::PointCloud2ConstPtr& keyframe);
 
-  bool savePcd(direct_lidar_inertial_odometry::save_pcd::Request& req,
-               direct_lidar_inertial_odometry::save_pcd::Response& res);
+  bool savePcd(dlio::save_pcd::Request& req,
+               dlio::save_pcd::Response& res);
 
   ros::NodeHandle nh;
 

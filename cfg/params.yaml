@@ -26,7 +26,6 @@ dlio:
       leafSize: 0.25
 
   odom:
-
     gravity: 9.80665
     computeTimeOffset: true
 
@@ -79,10 +78,10 @@ dlio:
       initLambdaFactor: 1e-9
 
     geo:
-      Kp: 8
-      Kv: 12
-      Kq: 4.0
-      Kab: 6
-      Kgb: 1.0
+      Kp: 8.
+      Kv: 12.
+      Kq: 4.
+      Kab: 6.
+      Kgb: 1.
       abias_max: 5.0
       gbias_max: 0.5
